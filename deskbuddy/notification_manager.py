@@ -251,6 +251,7 @@ class NotificationManager:
     ) -> dict:
         """Build the alert JSON payload."""
         return {
+            "cmd": "alert",
             "schema_ver": 1,
             "category": category.value,
             "urgency": urgency.value,

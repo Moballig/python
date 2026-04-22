@@ -134,7 +134,7 @@ class DeskBuddyCLI:
         except asyncio.TimeoutError:
             console.print("[red]✗ Provisioning timeout[/red]")
 
-    async def connect_tcp(self, host: str, port: int = 8080) -> None:
+    async def connect_tcp(self, host: str, port: int = 9090) -> None:
         """Connect to ESP32 over TCP."""
         console.print(f"Connecting to {host}:{port}…")
 
@@ -181,6 +181,36 @@ class DeskBuddyCLI:
 
         console.print("Checking user activity…")
         await self.notifications.send_wellness_reminder()
+
+    async def send_code_error(self, error_msg: str, file: str = "code", line: int = 0) -> None:
+        """Send custom code error to ESP32 display."""
+        if not self.comms.is_connected:
+            console.print("[red]✗ TCP not connected[/red]")
+            return
+
+        # Create formatted title
+        title = f"❌ Error: {file}:{line}" if line else f"❌ Error in {file}"
+        
+        # Build payload
+        payload = {
+            "cmd": "alert",
+            "category": "dev",
+            "urgency": 3,
+            "title": title,
+            "body": error_msg,
+            "color": "#FF3333",
+            "file": file,
+            "line": line
+        }
+        
+        # Send to ESP32
+        success = await self.comms.send_json(payload)
+        if success:
+            console.print(f"[green]✓ Error sent to ESP32 display[/green]")
+            console.print(f"   [bold]{title}[/bold]")
+            console.print(f"   {error_msg}")
+        else:
+            console.print("[red]✗ Failed to send error to ESP32[/red]")
 
     async def connect_nekobot(self, host: str, port: int = 9090) -> None:
         """Connect to NekoBot."""
@@ -260,6 +290,7 @@ class DeskBuddyCLI:
 - **send-dev** - Send development alert
 - **send-system** - Send system vital alert
 - **send-wellness** - Send wellness reminder
+- **send-error <msg> [file] [line]** - Send custom code error to ESP32 display
 
 ### NekoBot
 - **neko-connect <host> [port]** - Connect to NekoBot
@@ -326,7 +357,7 @@ class DeskBuddyCLI:
 
                 elif command == "tcp-connect" and args:
                     host = args[0]
-                    port = int(args[1]) if len(args) > 1 else 8080
+                    port = int(args[1]) if len(args) > 1 else 9090
                     await self.connect_tcp(host, port)
 
                 elif command == "tcp-disconnect":
@@ -340,6 +371,17 @@ class DeskBuddyCLI:
 
                 elif command == "send-wellness":
                     await self.send_wellness_reminder()
+
+                elif command == "send-error":
+                    if len(args) < 1:
+                        console.print("[red]Usage: send-error <error_msg> [file] [line][/red]")
+                    else:
+                        file = args[1] if len(args) > 1 else "code"
+                        try:
+                            line = int(args[2]) if len(args) > 2 else 0
+                        except ValueError:
+                            line = 0
+                        await self.send_code_error(args[0], file, line)
 
                 elif command == "neko-connect" and args:
                     host = args[0]

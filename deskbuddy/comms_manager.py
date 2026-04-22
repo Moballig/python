@@ -1,6 +1,7 @@
 """TCP and WebSocket communication manager for post-provisioning alerts."""
 
 import asyncio
+from datetime import time
 import json
 import logging
 from typing import Callable, Optional
@@ -27,7 +28,7 @@ class CommsManager:
         """
         self.mode = mode
         self.host: Optional[str] = None
-        self.port: int = 8080
+        self.port: int = 9090
         self.is_connected = False
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
@@ -44,7 +45,7 @@ class CommsManager:
         self._read_task: Optional[asyncio.Task] = None
         self._intentional_disconnect = False
 
-    async def connect_to_device(self, host: str, port: int = 8080) -> bool:
+    async def connect_to_device(self, host: str, port: int = 9090) -> bool:
         """
         Connect to the ESP32 over TCP or WebSocket.
         
@@ -116,22 +117,9 @@ class CommsManager:
         if self.on_disconnected:
             await self._call_async(self.on_disconnected)
 
-    async def send_json(self, data: dict) -> bool:
-        """
-        Send a JSON message.
-        
-        Args:
-            data: Dictionary to serialize as JSON.
-            
-        Returns:
-            True if send successful, False otherwise.
-        """
-        try:
-            json_str = json.dumps(data, separators=(',', ':'))
-            return await self.send_raw(json_str + "\n")
-        except Exception as e:
-            logger.error(f"[CommsManager] JSON serialization failed: {e}")
-            return False
+    async def send_json(self, payload: dict) -> bool:
+        """Send a JSON payload."""
+        return await self.send_raw(json.dumps(payload) + "\n")
 
     async def send_raw(self, payload: str) -> bool:
         """
