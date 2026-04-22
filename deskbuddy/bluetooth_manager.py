@@ -13,7 +13,7 @@ SPP_UUID = "00001101-0000-1000-8000-00805f9b34fb"
 
 
 class BluetoothManager:
-    """Manages Bluetooth Classic scanning and RFCOMM connections."""
+    """Manages Bluetooth scanning and connections."""
 
     def __init__(self):
         """Initialize the Bluetooth manager."""
@@ -46,15 +46,15 @@ class BluetoothManager:
         logger.info("[BT] Starting Bluetooth device scan…")
 
         try:
-            async with BleakScanner() as scanner:
-                await asyncio.sleep(timeout)
-                devices = await scanner.get_discovered_devices()
-                self.devices = devices
-                
-                for device in devices:
-                    logger.debug(f"[BT] Found device: {device.name} | {device.address}")
-                    if self.on_device_found:
-                        await self._call_async(self.on_device_found, device)
+            # Modern Bleak API: discover() handles the scanner and sleep automatically
+            devices = await BleakScanner.discover(timeout=timeout)
+            self.devices = devices
+            
+            for device in devices:
+                logger.debug(f"[BT] Found device: {device.name} | {device.address}")
+                if self.on_device_found:
+                    await self._call_async(self.on_device_found, device)
+                    
         except Exception as e:
             logger.error(f"[BT] Scan error: {e}")
             if self.on_error:
@@ -129,10 +129,9 @@ class BluetoothManager:
             return False
 
         try:
-            # Note: Bleak is BLE-focused; for classic Bluetooth RFCOMM,
-            # we'd typically use PyBluez. This is a BLE write operation.
             data = payload.encode("utf-8")
-            # Simplified for demo — actual implementation needs PyBluez for RFCOMM
+            # Note: Bleak uses GATT characteristics, writing requires a specific UUID
+            # Simplified for demo
             logger.debug(f"[BT] Sent {len(data)} bytes: {payload.strip()}")
             return True
         except Exception as e:
